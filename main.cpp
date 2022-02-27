@@ -4,6 +4,8 @@
 #include <iostream>
 #include <stdio.h>
 
+#include "UdpClient.h"
+
 /*
 typedef char MY_TYPE;
 #define FORMAT RTAUDIO_SINT8
@@ -64,7 +66,9 @@ int input(void * /*outputBuffer*/, void *inputBuffer,
 	InputData *iData = (InputData *)data;
 	// MY_TYPE *bufferData = (MY_TYPE *)inputBuffer;
 	// std::cout << bufferData[0] << std::endl;
-	std::cout << nBufferFrames << std::endl;
+	// std::cout << nBufferFrames << std::endl;
+	sendUdpData();
+
 	
 
 	// Simply copy the data to our allocated buffer.
