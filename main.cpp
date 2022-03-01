@@ -59,23 +59,35 @@ struct InputData {
 	unsigned int channels;
 };
 
+UdpClient client;
+
+int counter = 0;
+
 // Interleaved buffers
 int input(void * /*outputBuffer*/, void *inputBuffer,
           unsigned int nBufferFrames, double /*streamTime*/,
           RtAudioStreamStatus /*status*/, void *data) {
 	InputData *iData = (InputData *)data;
-	// MY_TYPE *bufferData = (MY_TYPE *)inputBuffer;
-	// std::cout << bufferData[0] << std::endl;
-	// std::cout << nBufferFrames << std::endl;
-	sendUdpData();
+	MY_TYPE *bufferData = (MY_TYPE *)inputBuffer;
+	unsigned long bufferBytes = nBufferFrames * iData->channels * sizeof(MY_TYPE);
 
-	
+	if (counter++ % 50 == 0) {
+		std::cout << "Data: ";
+		for (unsigned int i = 0; i < 100; i++) {
+			std::cout << bufferData[i] << ',';
+		}
+		std::cout << std::endl;
+
+		// std::cout << nBufferFrames << std::endl;
+		// char *lol = (char*)"Fajnie"; // bad practice
+		client.send(inputBuffer, bufferBytes);
+	}
 
 	// Simply copy the data to our allocated buffer.
 	unsigned int frames = nBufferFrames;
 	// if (iData->frameCounter + nBufferFrames > iData->totalFrames) {
-		// frames = iData->totalFrames - iData->frameCounter;
-		// iData->bufferBytes = frames * iData->channels * sizeof(MY_TYPE);
+	// frames = iData->totalFrames - iData->frameCounter;
+	// iData->bufferBytes = frames * iData->channels * sizeof(MY_TYPE);
 	// }
 
 	// unsigned long offset = iData->frameCounter * iData->channels;
@@ -131,7 +143,8 @@ int main(int argc, char *argv[]) {
 	InputData data;
 	// data.buffer = 0;
 	try {
-		adc.openStream(NULL, &iParams, FORMAT, fs, &bufferFrames, &input, (void *)&data);
+		adc.openStream(NULL, &iParams, FORMAT, fs, &bufferFrames, &input,
+		               (void *)&data);
 	} catch (RtAudioError &e) {
 		std::cout << '\n' << e.getMessage() << '\n' << std::endl;
 		goto cleanup;
