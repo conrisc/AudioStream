@@ -14,5 +14,5 @@ class UdpClient {
 	UdpClient();
 	~UdpClient();
 
-	void send(void *inputBuffer, unsigned int bufferBytes);
+	void send(char *inputBuffer, unsigned int bufferBytes);
 };

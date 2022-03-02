@@ -1,9 +1,11 @@
 #include "RtAudio.h"
+
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <stdio.h>
 
+#include "Analyser.cpp"
 #include "UdpClient.h"
 
 /*
@@ -60,6 +62,7 @@ struct InputData {
 };
 
 UdpClient client;
+Analyser analyser;
 
 int counter = 0;
 
@@ -69,18 +72,29 @@ int input(void * /*outputBuffer*/, void *inputBuffer,
           RtAudioStreamStatus /*status*/, void *data) {
 	InputData *iData = (InputData *)data;
 	MY_TYPE *bufferData = (MY_TYPE *)inputBuffer;
-	unsigned long bufferBytes = nBufferFrames * iData->channels * sizeof(MY_TYPE);
+	// unsigned long bufferBytes = nBufferFrames * iData->channels *
+	// sizeof(MY_TYPE);
+	unsigned long length = nBufferFrames * iData->channels;
 
-	if (counter++ % 50 == 0) {
-		std::cout << "Data: ";
-		for (unsigned int i = 0; i < 100; i++) {
-			std::cout << bufferData[i] << ',';
-		}
-		std::cout << std::endl;
+	if (counter++ % 10 == 0) {
+		// std::cout << "Data: ";
+		// for (unsigned int i = 0; i < 100; i++) {
+		// 	std::cout << bufferData[i] << ',';
+		// }
+		// std::cout << std::endl;
 
 		// std::cout << nBufferFrames << std::endl;
 		// char *lol = (char*)"Fajnie"; // bad practice
-		client.send(inputBuffer, bufferBytes);
+		FrequenciesData frequencies = analyser.getFrequencies(bufferData, length);
+		client.send(frequencies.buffer, length);
+		// double tmp[nBufferFrames];
+		// for (unsigned int i = 0; i < nBufferFrames; i++) {
+		// 	tmp[i] = bufferData[i];
+		// }
+		// auto fft = Aquila::FftFactory::getFft(nBufferFrames);
+		// Aquila::SpectrumType spectrum = fft->fft(tmp);
+		// Aquila::TextPlot plot("Spectrum");
+		// plot.plotSpectrum(spectrum);
 	}
 
 	// Simply copy the data to our allocated buffer.
@@ -97,6 +111,7 @@ int input(void * /*outputBuffer*/, void *inputBuffer,
 
 	// if (iData->frameCounter >= iData->totalFrames)
 	// 	return 2;
+
 	return 0;
 }
 

@@ -4,11 +4,11 @@
 #include <stdio.h>
 #include <winsock2.h>
 #include <iostream>
+
 #include "UdpClient.h"
 
 using namespace std;
 
-typedef signed short MY_TYPE;
 
 UdpClient::UdpClient() {
 	cout << "Constructing UdpClient" << endl;
@@ -40,14 +40,9 @@ UdpClient::~UdpClient() {
 	WSACleanup();
 }
 
-void UdpClient::send(void *inputBuffer, unsigned int bufferBytes) {
-	// MY_TYPE *bufferData = (MY_TYPE *)inputBuffer;
-    // printf("Enter message : ");
-    // gets(message);
-    // send the message
-	char *msg2 = (char *)inputBuffer;
+void UdpClient::send(char *inputBuffer, unsigned int bufferBytes) {
 	cout << "Sending data of length: "<< bufferBytes << endl;
-    if (sendto(s, msg2, bufferBytes, 0, (struct sockaddr *)&si_other, slen) == SOCKET_ERROR) {
+    if (sendto(s, inputBuffer, bufferBytes, 0, (struct sockaddr *)&si_other, slen) == SOCKET_ERROR) {
         printf("sendto() failed with error code : %d", WSAGetLastError());
         exit(EXIT_FAILURE);
     }
