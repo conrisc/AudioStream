@@ -80,24 +80,29 @@ class Analyser {
 
 		// *************************************************************
 
-		size_t spectralLine = 0;
-		double currentSpectralFreq = 0;
-
 		for (size_t spectrumBin = 0; spectrumBin < spectrumLog.size(); spectrumBin++) {
 			OctaveBand currentOctave = octaveBands[spectrumBin];
-			unsigned short usedSpectralLines = 0;
-			if (first) cout<<"Octave: "<<  currentOctave.lowFreq << endl;
-			while (spectralLine < frData -> length && currentSpectralFreq <= currentOctave.highFreq) {
-				if (currentSpectralFreq >= currentOctave.lowFreq) {
-					if (first) cout<<"Add: "<<  currentSpectralFreq << endl;
-					spectrumLog[spectrumBin] += magnitude[spectralLine];
-					usedSpectralLines++;
-				}
-				spectralLine++;
-				currentSpectralFreq = spectralLine * spectralLineLength;
-			}
+			size_t specLineLow = floor(currentOctave.lowFreq / spectralLineLength);
+			size_t specLineHigh = ceil(currentOctave.highFreq / spectralLineLength); // TODO: cannot exceed spectrum
 
-			if (usedSpectralLines > 0) spectrumLog[spectrumBin] = spectrumLog[spectrumBin] / usedSpectralLines;
+			if (specLineHigh - specLineLow == 1) {
+				double part = (currentOctave.highFreq - currentOctave.lowFreq) / spectralLineLength;
+				spectrumLog[spectrumBin] = magnitude[specLineLow] * part;
+			} else {
+				size_t specLineLowIn = specLineLow + 1;
+				double lowPart = ((specLineLowIn * spectralLineLength) - currentOctave.lowFreq) / spectralLineLength;
+				size_t specLineHighIn = specLineHigh - 1;
+				double highPart = (currentOctave.highFreq - (specLineHighIn * spectralLineLength)) / spectralLineLength;
+
+				spectrumLog[spectrumBin] = magnitude[specLineLow] * lowPart;
+				spectrumLog[spectrumBin] += magnitude[specLineHighIn] * highPart;
+
+				for (;specLineLowIn < specLineHighIn; specLineLowIn++) {
+					spectrumLog[spectrumBin] += magnitude[specLineLowIn];
+				}
+
+				spectrumLog[spectrumBin] = spectrumLog[spectrumBin] / (specLineHighIn - specLineLow);
+			}
 		}
 
 		//***************************************************************
@@ -111,7 +116,7 @@ class Analyser {
 		}
 		first = false;
 
-		averages.buffer = (char *)&spectrumLog[0];
+		averages.buffer = (char *)spectrumLog.data();
 		averages.bufferBytes = spectrumLog.size() * sizeof(double);
 
 		return averages;
