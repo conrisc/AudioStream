@@ -29,10 +29,13 @@ struct OctaveBand {
 
 class Analyser {
 	bool first = true;
-	vector<OctaveBand> octaveBandsBase;
+	vector<OctaveBand> octaveBands;
+	vector<double> spectrumLog;
 
   public:
-	Analyser() { calculateOctaveBands(); }
+	Analyser() {
+		calculateOctaveBands();
+	}
 
 	FrequenciesData getFrequencies(MY_TYPE *inputBuffer, unsigned long length) {
 		double *fftInput = (double *)malloc(length * sizeof(double));
@@ -63,9 +66,9 @@ class Analyser {
 	}
 
 	LogAverages getOctaveBands(FrequenciesData *frData) {
+		spectrumLog.assign(octaveBands.size(), 0);
 		LogAverages averages;
 
-		const double bandLengthRatio = 1.25992; // currentBandLength = previousBandLength * 1.25992
 		const unsigned int sampleRate = 44100;
 		const unsigned int fftSize = frData->length * 2; // we take te original fft size
 
@@ -75,54 +78,41 @@ class Analyser {
 
 		double *magnitude = frData->buffer;
 
-		// TODO********************************************************
-		const unsigned short numberOfBands = 18;
-		double *octaveBands = (double *)malloc(numberOfBands * sizeof(double));
+		// *************************************************************
 
-		int spectralLine = 0;
-		if (spectralLineLength < 32)
-			spectralLine++; // ignore first spectral line if below 32Hz
-		int band = 0;
-		octaveBands[band++] = magnitude[spectralLine++];
-		if (first)
-			cout << band << ": " << (spectralLine - 1) * spectralLineLength << " - " << (spectralLineLength * spectralLine) << endl;
-		octaveBands[band++] = magnitude[spectralLine++];
-		if (first)
-			cout << band << ": " << (spectralLine - 1) * spectralLineLength << " - " << (spectralLineLength * spectralLine) << endl;
-		octaveBands[band++] = magnitude[spectralLine++];
-		if (first)
-			cout << band << ": " << (spectralLine - 1) * spectralLineLength << " - " << (spectralLineLength * spectralLine) << endl;
+		size_t spectralLine = 0;
+		double currentSpectralFreq = 0;
 
-		double previousBandLength = spectralLineLength;
-		double previousBandFrequency = spectralLineLength * spectralLine;
-		unsigned short usedSpectralLines;
-		for (; band < numberOfBands; band++) {
-			usedSpectralLines = 0;
-			while (1) {
-				octaveBands[band] += magnitude[spectralLine++];
-				usedSpectralLines++;
-
-				double currentFrequency = spectralLine * spectralLineLength;
-				double currentBandLength = currentFrequency - previousBandFrequency;
-				if (currentBandLength > bandLengthRatio * previousBandLength) {
-					octaveBands[band] = octaveBands[band] / usedSpectralLines;
-					if (first)
-						cout << band + 1 << ": " << previousBandFrequency << " - " << currentFrequency << endl;
-
-					previousBandLength = currentFrequency - previousBandFrequency;
-					previousBandFrequency = currentFrequency;
-
-					break;
+		for (size_t spectrumBin = 0; spectrumBin < spectrumLog.size(); spectrumBin++) {
+			OctaveBand currentOctave = octaveBands[spectrumBin];
+			unsigned short usedSpectralLines = 0;
+			if (first) cout<<"Octave: "<<  currentOctave.lowFreq << endl;
+			while (spectralLine < frData -> length && currentSpectralFreq <= currentOctave.highFreq) {
+				if (currentSpectralFreq >= currentOctave.lowFreq) {
+					if (first) cout<<"Add: "<<  currentSpectralFreq << endl;
+					spectrumLog[spectrumBin] += magnitude[spectralLine];
+					usedSpectralLines++;
 				}
+				spectralLine++;
+				currentSpectralFreq = spectralLine * spectralLineLength;
 			}
+
+			if (usedSpectralLines > 0) spectrumLog[spectrumBin] = spectrumLog[spectrumBin] / usedSpectralLines;
+		}
+
+		//***************************************************************
+
+		if (first) {
+			cout << "Spectrum log: " << endl;
+			for (size_t i = 0; i < spectrumLog.size(); i++) {
+				cout << spectrumLog[i]<< " ";
+			}
+			cout << endl;
 		}
 		first = false;
 
-		octaveBands[band] = octaveBands[band] / usedSpectralLines;
-		//***************************************************************
-
-		averages.buffer = (char *)(octaveBands);
-		averages.bufferBytes = numberOfBands * sizeof(double);
+		averages.buffer = (char *)&spectrumLog[0];
+		averages.bufferBytes = spectrumLog.size() * sizeof(double);
 
 		return averages;
 	}
@@ -151,13 +141,13 @@ class Analyser {
 			ob.lowFreq = (unsigned int)currentFreq / edgeRatio;
 			ob.highFreq = (unsigned int)currentFreq * edgeRatio;
 
-			octaveBandsBase.push_back(ob);
+			octaveBands.push_back(ob);
 			currentFreq = midFreqInterval * currentFreq;
 		}
 
 		cout << "Octave bands: " << endl;
-		for (size_t i = 0; i < octaveBandsBase.size(); i++) {
-			OctaveBand ob = octaveBandsBase[i];
+		for (size_t i = 0; i < octaveBands.size(); i++) {
+			OctaveBand ob = octaveBands[i];
 			cout << "Low: " << ob.lowFreq << " Mid: " << ob.midFreq << " High: " << ob.highFreq << endl;
 		}
 	}

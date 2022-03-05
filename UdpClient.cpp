@@ -46,7 +46,6 @@ void UdpClient::send(char *inputBuffer, unsigned int bufferBytes) {
         printf("sendto() failed with error code : %d", WSAGetLastError());
         exit(EXIT_FAILURE);
     }
-	free(inputBuffer); // It should be move to caller
 }
 
 // UdpClient::receive() {
