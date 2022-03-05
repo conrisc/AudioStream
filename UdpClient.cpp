@@ -41,11 +41,12 @@ UdpClient::~UdpClient() {
 }
 
 void UdpClient::send(char *inputBuffer, unsigned int bufferBytes) {
-	cout << "Sending data of length: "<< bufferBytes << endl;
+	// cout << "Sending data of length: "<< bufferBytes << endl;
     if (sendto(s, inputBuffer, bufferBytes, 0, (struct sockaddr *)&si_other, slen) == SOCKET_ERROR) {
         printf("sendto() failed with error code : %d", WSAGetLastError());
         exit(EXIT_FAILURE);
     }
+	free(inputBuffer); // It should be move to caller
 }
 
 // UdpClient::receive() {

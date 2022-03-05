@@ -76,7 +76,7 @@ int input(void * /*outputBuffer*/, void *inputBuffer,
 	// sizeof(MY_TYPE);
 	unsigned long length = nBufferFrames * iData->channels;
 
-	if (counter++ % 10 == 0) {
+	// if (counter++ % 10 == 0) {
 		// std::cout << "Data: ";
 		// for (unsigned int i = 0; i < 100; i++) {
 		// 	std::cout << bufferData[i] << ',';
@@ -85,8 +85,8 @@ int input(void * /*outputBuffer*/, void *inputBuffer,
 
 		// std::cout << nBufferFrames << std::endl;
 		// char *lol = (char*)"Fajnie"; // bad practice
-		FrequenciesData frequencies = analyser.getFrequencies(bufferData, length);
-		client.send(frequencies.buffer, length);
+		LogAverages visualization = analyser.getVisualization(bufferData, length);
+		client.send(visualization.buffer, visualization.bufferBytes);
 		// double tmp[nBufferFrames];
 		// for (unsigned int i = 0; i < nBufferFrames; i++) {
 		// 	tmp[i] = bufferData[i];
@@ -95,7 +95,7 @@ int input(void * /*outputBuffer*/, void *inputBuffer,
 		// Aquila::SpectrumType spectrum = fft->fft(tmp);
 		// Aquila::TextPlot plot("Spectrum");
 		// plot.plotSpectrum(spectrum);
-	}
+	// }
 
 	// Simply copy the data to our allocated buffer.
 	unsigned int frames = nBufferFrames;
