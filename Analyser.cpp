@@ -10,11 +10,7 @@
 using namespace std;
 
 typedef signed short MY_TYPE;
-
-struct FrequenciesData {
-	double *buffer;
-	unsigned long length;
-};
+typedef vector<double> FrequenciesData;
 
 struct LogAverages {
 	char *buffer;
@@ -38,45 +34,39 @@ class Analyser {
 	}
 
 	FrequenciesData getFrequencies(MY_TYPE *inputBuffer, unsigned long length) {
-		double *fftInput = (double *)malloc(length * sizeof(double));
+		vector<double> fftInput(length);
 
 		for (unsigned long i = 0; i < length; i++) {
 			fftInput[i] = inputBuffer[i];
 		}
 
 		auto fft = Aquila::FftFactory::getFft(length);
-		Aquila::SpectrumType spectrum = fft->fft(fftInput);
-		free(fftInput);
+		Aquila::SpectrumType spectrum = fft->fft(fftInput.data());
 
 		size_t spectrumSize = spectrum.size() / 2; // Take only the first half, the second is a mirror of first (why?)
 		// cout << "Fft spectrum size: " << spectrum.size() << ". Useful part size: " << spectrumSize << endl;
+		vector<double> fftOutput (spectrumSize);
 
-		double *fftOutput = (double *)malloc(spectrumSize * sizeof(double));
 		for (size_t i = 0; i < spectrumSize; i++) {
 			auto real = spectrum[i].real();
 			auto imag = spectrum[i].imag();
 			fftOutput[i] = sqrt(real * real + imag * imag);
 		}
 
-		FrequenciesData data;
-		data.buffer = fftOutput;
-		data.length = spectrumSize;
-
-		return data;
+		FrequenciesData frData = fftOutput;
+		return frData;
 	}
 
-	LogAverages getOctaveBands(FrequenciesData *frData) {
+	LogAverages getOctaveBands(FrequenciesData frData) {
 		spectrumLog.assign(octaveBands.size(), 0);
 		LogAverages averages;
 
 		const unsigned int sampleRate = 30100;
-		const unsigned int fftSize = frData->length * 2; // we take te original fft size
+		const unsigned int fftSize = frData.size() * 2; // we take te original fft size
 
 		double frequencyResolution = 1.0 * sampleRate / fftSize;
 		if (first)
 			cout << "Frequency resolution: " << sampleRate << " / " << fftSize << " = " << frequencyResolution << endl;
-
-		double *magnitude = frData->buffer;
 
 		// *************************************************************
 
@@ -86,7 +76,7 @@ class Analyser {
 			size_t specLineHigh = round(currentOctave.highFreq / frequencyResolution); // Not part of current spectrum bin // TODO: cannot exceed spectrum
 
 				for (size_t i = specLineLow;i < specLineHigh; i++) {
-					spectrumLog[spectrumBin] += magnitude[i];
+					spectrumLog[spectrumBin] += frData[i];
 				}
 
 				spectrumLog[spectrumBin] = spectrumLog[spectrumBin] / (specLineHigh - specLineLow);
@@ -111,7 +101,7 @@ class Analyser {
 
 	LogAverages getVisualization(MY_TYPE *inputBuffer, unsigned long length) {
 		FrequenciesData frData = getFrequencies(inputBuffer, length);
-		LogAverages averages = getOctaveBands(&frData);
+		LogAverages averages = getOctaveBands(frData);
 
 		return averages;
 	}
