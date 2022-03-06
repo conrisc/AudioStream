@@ -69,12 +69,12 @@ class Analyser {
 		spectrumLog.assign(octaveBands.size(), 0);
 		LogAverages averages;
 
-		const unsigned int sampleRate = 44100;
+		const unsigned int sampleRate = 30100;
 		const unsigned int fftSize = frData->length * 2; // we take te original fft size
 
-		double spectralLineLength = 1.0 * sampleRate / fftSize;
+		double frequencyResolution = 1.0 * sampleRate / fftSize;
 		if (first)
-			cout << "Spectral line length: " << sampleRate << " / " << fftSize << " = " << spectralLineLength << endl;
+			cout << "Frequency resolution: " << sampleRate << " / " << fftSize << " = " << frequencyResolution << endl;
 
 		double *magnitude = frData->buffer;
 
@@ -82,27 +82,14 @@ class Analyser {
 
 		for (size_t spectrumBin = 0; spectrumBin < spectrumLog.size(); spectrumBin++) {
 			OctaveBand currentOctave = octaveBands[spectrumBin];
-			size_t specLineLow = floor(currentOctave.lowFreq / spectralLineLength);
-			size_t specLineHigh = ceil(currentOctave.highFreq / spectralLineLength); // TODO: cannot exceed spectrum
+			size_t specLineLow = round(currentOctave.lowFreq / frequencyResolution);
+			size_t specLineHigh = round(currentOctave.highFreq / frequencyResolution); // Not part of current spectrum bin // TODO: cannot exceed spectrum
 
-			if (specLineHigh - specLineLow == 1) {
-				double part = (currentOctave.highFreq - currentOctave.lowFreq) / spectralLineLength;
-				spectrumLog[spectrumBin] = magnitude[specLineLow] * part;
-			} else {
-				size_t specLineLowIn = specLineLow + 1;
-				double lowPart = ((specLineLowIn * spectralLineLength) - currentOctave.lowFreq) / spectralLineLength;
-				size_t specLineHighIn = specLineHigh - 1;
-				double highPart = (currentOctave.highFreq - (specLineHighIn * spectralLineLength)) / spectralLineLength;
-
-				spectrumLog[spectrumBin] = magnitude[specLineLow] * lowPart;
-				spectrumLog[spectrumBin] += magnitude[specLineHighIn] * highPart;
-
-				for (;specLineLowIn < specLineHighIn; specLineLowIn++) {
-					spectrumLog[spectrumBin] += magnitude[specLineLowIn];
+				for (size_t i = specLineLow;i < specLineHigh; i++) {
+					spectrumLog[spectrumBin] += magnitude[i];
 				}
 
-				spectrumLog[spectrumBin] = spectrumLog[spectrumBin] / (specLineHighIn - specLineLow);
-			}
+				spectrumLog[spectrumBin] = spectrumLog[spectrumBin] / (specLineHigh - specLineLow);
 		}
 
 		//***************************************************************

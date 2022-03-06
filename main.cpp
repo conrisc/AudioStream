@@ -116,7 +116,7 @@ int input(void * /*outputBuffer*/, void *inputBuffer,
 }
 
 int main(int argc, char *argv[]) {
-	unsigned int channels = 2, fs = 44100, bufferFrames, device = 0, offset = 0;
+	unsigned int channels = 2, fs = 30100, bufferFrames, device = 0, offset = 0;
 	double time = 8.0;
 	// FILE *fd;
 
