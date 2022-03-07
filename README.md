@@ -13,4 +13,4 @@ g++ -Wall -I../Aquila/include -o test_aquila test_aquila.cpp -L../Aquila/lib -lA
 
 # Compile
 
-g++ -Wall -D__WINDOWS_WASAPI__ -I../rtaudio-5.2.0/include -I../Aquila/include -o main main.cpp UdpClient.cpp RtAudio.cpp -lole32 -lwinmm -lksuser -lmfplat -lmfuuid -lwmcodecdspuuid -lws2_32 -L../Aquila/lib -lAquila -L../aquila-src/build/lib -lOoura_fft
+g++ -Wall -D__WINDOWS_WASAPI__ -I../rtaudio-5.2.0/include -I../Aquila/include -o main main.cpp UdpClient.cpp Analyser.cpp RtAudio.cpp -lole32 -lwinmm -lksuser -lmfplat -lmfuuid -lwmcodecdspuuid -lws2_32 -L../Aquila/lib -lAquila -L../aquila-src/build/lib -lOoura_fft -std=c++20

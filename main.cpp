@@ -93,7 +93,7 @@ int input(
 }
 
 int main(int argc, char *argv[]) {
-	unsigned int channels = 1, fs = 32000, bufferFrames = 2048, device = 0, offset = 0;
+	unsigned int channels = 1, fs = 30000, bufferFrames = 2048, device = 0, offset = 0;
 
 	usage();
 

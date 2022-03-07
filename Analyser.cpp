@@ -1,6 +1,7 @@
 
 #include "aquila/global.h"
 #include "aquila/source/generator/SineGenerator.h"
+#include "aquila/source/window/HannWindow.h"
 #include "aquila/tools/TextPlot.h"
 #include "aquila/transform/FftFactory.h"
 
@@ -27,9 +28,10 @@ class Analyser {
 	bool first = true;
 	vector<OctaveBand> octaveBands;
 	vector<double> spectrumLog;
+	Aquila::HannWindow hann;
 
   public:
-	Analyser() {
+	Analyser() : hann(2048) {
 		calculateOctaveBands();
 	}
 
@@ -41,11 +43,12 @@ class Analyser {
 			fftInput[i] = inputSignal[i];
 		}
 
+		Aquila::SignalSource fftInputWindowed = fftInput * hann;
+
 		auto fft = Aquila::FftFactory::getFft(size);
-		Aquila::SpectrumType spectrum = fft->fft(fftInput.data());
+		Aquila::SpectrumType spectrum = fft->fft(fftInputWindowed.toArray());
 
 		size_t spectrumSize = spectrum.size() / 2; // Take only the first half, the second is a mirror of first (why?)
-		// cout << "Fft spectrum size: " << spectrum.size() << ". Useful part size: " << spectrumSize << endl;
 		vector<double> fftOutput (spectrumSize);
 
 		for (size_t i = 0; i < spectrumSize; i++) {
@@ -62,7 +65,7 @@ class Analyser {
 		spectrumLog.assign(octaveBands.size(), 0);
 		LogAverages averages;
 
-		const unsigned int sampleRate = 32000;
+		const unsigned int sampleRate = 30000;
 		const unsigned int fftSize = frData.size() * 2; // we take te original fft size
 
 		double frequencyResolution = 1.0 * sampleRate / fftSize;
