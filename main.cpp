@@ -1,5 +1,6 @@
 #include "RtAudio.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
@@ -51,6 +52,8 @@ void usage(void) {
 }
 
 struct InputData {
+	vector<MY_TYPE> buffer;
+	unsigned int bufferFrames;
 	unsigned long bufferBytes;
 	unsigned int channels;
 };
@@ -59,6 +62,7 @@ UdpClient client;
 Analyser analyser;
 
 int counter = 0;
+unsigned int bufferFramesRead = 512;
 
 // Interleaved buffers
 int input(
@@ -69,12 +73,19 @@ int input(
 	RtAudioStreamStatus /*status*/,
 	void *data
 ) {
-
 	InputData *iData = (InputData *)data;
 	MY_TYPE *bufferData = (MY_TYPE *)inputBuffer;
-	unsigned long length = nBufferFrames * iData->channels;
+	// unsigned long length = nBufferFrames * iData->channels;
 
-	LogAverages visualization = analyser.getVisualization(bufferData, length);
+	std::shift_left(iData -> buffer.begin(), iData -> buffer.end(), bufferFramesRead);
+
+	// TODO: find better approach
+	size_t j = 0;
+	for (size_t i = iData -> bufferFrames - bufferFramesRead; i < iData -> bufferFrames; i++ ) { // assuming there is only one channel
+		iData -> buffer[i] = bufferData[j++];
+	}
+
+	LogAverages visualization = analyser.getVisualization(iData -> buffer);
 	client.send(visualization.buffer, visualization.bufferBytes);
 
 	// 	return 2;
@@ -82,7 +93,7 @@ int input(
 }
 
 int main(int argc, char *argv[]) {
-	unsigned int channels = 1, fs = 30100, bufferFrames = 2048, device = 0, offset = 0;
+	unsigned int channels = 1, fs = 32000, bufferFrames = 2048, device = 0, offset = 0;
 
 	usage();
 
@@ -118,13 +129,17 @@ int main(int argc, char *argv[]) {
 	iParams.firstChannel = offset;
 
 	InputData data;
+
+
 	try {
-		adc.openStream(NULL, &iParams, FORMAT, fs, &bufferFrames, &input, (void *)&data);
+		adc.openStream(NULL, &iParams, FORMAT, fs, &bufferFramesRead, &input, (void *)&data);
 	} catch (RtAudioError &e) {
 		std::cout << '\n' << e.getMessage() << '\n' << std::endl;
 		goto cleanup;
 	}
 
+	data.buffer.assign(bufferFrames, 0); // assuming there is only one channel
+	data.bufferFrames = bufferFrames;
 	data.bufferBytes = bufferFrames * channels * sizeof(MY_TYPE);
 	data.channels = channels;
 

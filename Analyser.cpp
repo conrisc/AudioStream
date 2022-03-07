@@ -33,14 +33,15 @@ class Analyser {
 		calculateOctaveBands();
 	}
 
-	FrequenciesData getFrequencies(MY_TYPE *inputBuffer, unsigned long length) {
-		vector<double> fftInput(length);
+	FrequenciesData getFrequencies(vector<MY_TYPE> inputSignal) {
+		unsigned int size = inputSignal.size();
+		vector<double> fftInput(size);
 
-		for (unsigned long i = 0; i < length; i++) {
-			fftInput[i] = inputBuffer[i];
+		for (unsigned long i = 0; i < size; i++) {
+			fftInput[i] = inputSignal[i];
 		}
 
-		auto fft = Aquila::FftFactory::getFft(length);
+		auto fft = Aquila::FftFactory::getFft(size);
 		Aquila::SpectrumType spectrum = fft->fft(fftInput.data());
 
 		size_t spectrumSize = spectrum.size() / 2; // Take only the first half, the second is a mirror of first (why?)
@@ -61,7 +62,7 @@ class Analyser {
 		spectrumLog.assign(octaveBands.size(), 0);
 		LogAverages averages;
 
-		const unsigned int sampleRate = 30100;
+		const unsigned int sampleRate = 32000;
 		const unsigned int fftSize = frData.size() * 2; // we take te original fft size
 
 		double frequencyResolution = 1.0 * sampleRate / fftSize;
@@ -99,8 +100,8 @@ class Analyser {
 		return averages;
 	}
 
-	LogAverages getVisualization(MY_TYPE *inputBuffer, unsigned long length) {
-		FrequenciesData frData = getFrequencies(inputBuffer, length);
+	LogAverages getVisualization(vector<MY_TYPE> inputSignal) {
+		FrequenciesData frData = getFrequencies(inputSignal);
 		LogAverages averages = getOctaveBands(frData);
 
 		return averages;
