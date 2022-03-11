@@ -11,7 +11,8 @@
 
 using namespace std;
 
-typedef signed short MY_TYPE;
+// typedef signed short MY_TYPE;
+typedef double MY_TYPE;
 typedef vector<double> FrequenciesData;
 
 struct AWeight {
@@ -59,13 +60,19 @@ class Analyser {
 
 	FrequenciesData getFrequencies(vector<MY_TYPE> inputSignal) {
 		unsigned int size = inputSignal.size();
-		vector<double> fftInput(size);
+		Aquila::SignalSource fftInputWindowed;
 
-		for (unsigned long i = 0; i < size; i++) {
-			fftInput[i] = inputSignal[i];
-		}
+		// if (is_same<double, MY_TYPE>::value) {
+		fftInputWindowed = inputSignal * hann;
+		// } else {
+		// 	vector<double> fftInput(size);
 
-		Aquila::SignalSource fftInputWindowed = fftInput * hann;
+		// 	for (unsigned long i = 0; i < size; i++) {
+		// 		fftInput[i] = inputSignal[i];
+		// 	}
+
+		// 	fftInputWindowed = fftInput * hann;
+		// }
 
 		auto fft = Aquila::FftFactory::getFft(size);
 		Aquila::SpectrumType spectrum = fft->fft(fftInputWindowed.toArray());
