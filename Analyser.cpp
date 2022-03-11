@@ -58,6 +58,15 @@ class Analyser {
 		spectrumLog.assign(octaveBands.size(), 0);
 	}
 
+	LogAverages getVisualization(vector<MY_TYPE> inputSignal) {
+		fftSize = inputSignal.size();
+		FrequenciesData frData = getFrequencies(inputSignal);
+		LogAverages averages = getSpectrumAnalysis(frData);
+
+		return averages;
+	}
+
+  private:
 	FrequenciesData getFrequencies(vector<MY_TYPE> inputSignal) {
 		unsigned int size = inputSignal.size();
 		Aquila::SignalSource fftInputWindowed;
@@ -92,7 +101,7 @@ class Analyser {
 		return frData;
 	}
 
-	LogAverages getOctaveBands(FrequenciesData frData) {
+	LogAverages getSpectrumAnalysis(FrequenciesData frData) {
 		LogAverages averages;
 
 		double frequencyResolution = 1.0 * sampleRate / fftSize;
@@ -134,6 +143,34 @@ class Analyser {
 		averages.bufferBytes = spectrumLog.size() * sizeof(double);
 
 		return averages;
+	}
+
+	void calculateOctaveBands(short N = 3, unsigned int lowwesMidFreq = 40) { // 1/N Octave bands
+		// Middle frequency: f0
+		// Lower freq. bound: f0 / (2^1/2)^1/N = f0 / 2^(1/2 * 1/N)
+		// Upper freq. bound: f0 * (2^1/2)^1/N = f0 * 2^(1/2 * 1/N)
+
+		unsigned int higgestMidFreq = 16000;
+		double midFreqInterval = pow(2, 1.0 / N);
+		double edgeRatio = pow(2, 0.5 / N);
+		cout << "Mid frequency interval: " << midFreqInterval << endl;
+
+		double currentFreq = (double)lowwesMidFreq;
+		while (currentFreq <= higgestMidFreq) {
+			OctaveBand ob;
+			ob.midFreq = (unsigned int)currentFreq;
+			ob.lowFreq = (unsigned int)currentFreq / edgeRatio;
+			ob.highFreq = (unsigned int)currentFreq * edgeRatio;
+
+			octaveBands.push_back(ob);
+			currentFreq = midFreqInterval * currentFreq;
+		}
+
+		cout << "Octave bands: " << endl;
+		for (size_t i = 0; i < octaveBands.size(); i++) {
+			OctaveBand ob = octaveBands[i];
+			cout << "Low: " << ob.lowFreq << " Mid: " << ob.midFreq << " High: " << ob.highFreq << endl;
+		}
 	}
 
 	double getWeight(unsigned int freq, double magnitude) {
@@ -186,39 +223,4 @@ class Analyser {
 		return magnitudeWithWeight;
 	}
 
-	LogAverages getVisualization(vector<MY_TYPE> inputSignal) {
-		fftSize = inputSignal.size();
-		FrequenciesData frData = getFrequencies(inputSignal);
-		LogAverages averages = getOctaveBands(frData);
-
-		return averages;
-	}
-
-	void calculateOctaveBands(short N = 3, unsigned int lowwesMidFreq = 40) { // 1/N Octave bands
-		// Middle frequency: f0
-		// Lower freq. bound: f0 / (2^1/2)^1/N = f0 / 2^(1/2 * 1/N)
-		// Upper freq. bound: f0 * (2^1/2)^1/N = f0 * 2^(1/2 * 1/N)
-
-		unsigned int higgestMidFreq = 16000;
-		double midFreqInterval = pow(2, 1.0 / N);
-		double edgeRatio = pow(2, 0.5 / N);
-		cout << "Mid frequency interval: " << midFreqInterval << endl;
-
-		double currentFreq = (double)lowwesMidFreq;
-		while (currentFreq <= higgestMidFreq) {
-			OctaveBand ob;
-			ob.midFreq = (unsigned int)currentFreq;
-			ob.lowFreq = (unsigned int)currentFreq / edgeRatio;
-			ob.highFreq = (unsigned int)currentFreq * edgeRatio;
-
-			octaveBands.push_back(ob);
-			currentFreq = midFreqInterval * currentFreq;
-		}
-
-		cout << "Octave bands: " << endl;
-		for (size_t i = 0; i < octaveBands.size(); i++) {
-			OctaveBand ob = octaveBands[i];
-			cout << "Low: " << ob.lowFreq << " Mid: " << ob.midFreq << " High: " << ob.highFreq << endl;
-		}
-	}
 };
