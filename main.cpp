@@ -114,6 +114,7 @@ int main(int argc, char *argv[]) {
 	if (argc > 5)
 		offset = (unsigned int)atoi(argv[5]);
 
+	analyser.sampleRate = fs;
 	// Let RtAudio print messages to stderr.
 	adc.showWarnings(true);
 
@@ -129,7 +130,6 @@ int main(int argc, char *argv[]) {
 	iParams.firstChannel = offset;
 
 	InputData data;
-
 
 	try {
 		adc.openStream(NULL, &iParams, FORMAT, fs, &bufferFramesRead, &input, (void *)&data);
