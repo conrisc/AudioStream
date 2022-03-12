@@ -26,7 +26,7 @@ vector<AWeight> aWeights = {
     {400, -4.8},  {500, -3.2}, {630, -1.9}, {800, -0.8},   {1000, 0.0},  {1250, 0.6},   {1600, 1.0},   {2000, 1.2},   {2500, 1.3},
     {3150, 1.2},  {4000, 1.0}, {5000, 0.6}, {6300, -0.1},  {8000, -1.1}, {10000, -2.5}, {12500, -4.3}, {16000, -6.7}, {20000, -9.3}};
 
-struct LogAverages {
+struct RawData {
 	char *buffer;
 	unsigned long bufferBytes;
 };
@@ -58,12 +58,15 @@ class Analyser {
 		spectrumLog.assign(octaveBands.size(), 0);
 	}
 
-	LogAverages getVisualization(vector<MY_TYPE> inputSignal) {
+	RawData getVisualization(vector<MY_TYPE> inputSignal) {
 		fftSize = inputSignal.size();
 		FrequenciesData frData = getFrequencies(inputSignal);
-		LogAverages averages = getSpectrumAnalysis(frData);
+		executeSpectrumAnalysis(frData);
 
-		return averages;
+		char *buffer = (char *)spectrumLog.data();
+		unsigned int bufferBytes = spectrumLog.size() * sizeof(double);
+
+		return RawData{ buffer, bufferBytes };
 	}
 
   private:
@@ -101,9 +104,7 @@ class Analyser {
 		return frData;
 	}
 
-	LogAverages getSpectrumAnalysis(FrequenciesData frData) {
-		LogAverages averages;
-
+	void executeSpectrumAnalysis(FrequenciesData frData) {
 		double frequencyResolution = 1.0 * sampleRate / fftSize;
 		if (first)
 			cout << "Frequency resolution: " << sampleRate << " / " << fftSize << " = " << frequencyResolution << endl;
@@ -139,10 +140,6 @@ class Analyser {
 		}
 		first = false;
 
-		averages.buffer = (char *)spectrumLog.data();
-		averages.bufferBytes = spectrumLog.size() * sizeof(double);
-
-		return averages;
 	}
 
 	void calculateOctaveBands(short N = 3, unsigned int lowwesMidFreq = 40) { // 1/N Octave bands

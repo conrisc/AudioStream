@@ -83,7 +83,7 @@ int input(
 		iData -> buffer[i] = bufferData[j++];
 	}
 
-	LogAverages visualization = analyser.getVisualization(iData -> buffer);
+	RawData visualization = analyser.getVisualization(iData -> buffer);
 	client.send(visualization.buffer, visualization.bufferBytes);
 
 	// 	return 2;
