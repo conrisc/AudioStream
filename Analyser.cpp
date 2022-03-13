@@ -8,6 +8,7 @@
 #include <iostream>
 #include <math.h>
 #include <vector>
+#include <time.h>
 
 using namespace std;
 
@@ -50,21 +51,30 @@ class Analyser {
 	Aquila::HannWindow hann;
 	SpectrumScale scale = linear;
 
+	vector<double> lastPeeks;
+	vector<double>::iterator currentPeekIter;
+	unsigned int currentPeek = 1;
+	clock_t lastChecked = clock();
+
+
   public:
 	unsigned int sampleRate = 30000;
 
 	Analyser() : hann(fftSize) {
 		calculateOctaveBands();
 		spectrumLog.assign(octaveBands.size(), 0);
+		lastPeeks.assign(10, 1);
+		currentPeekIter = lastPeeks.begin();
 	}
 
 	RawData getVisualization(vector<MY_TYPE> inputSignal) {
 		fftSize = inputSignal.size();
 		FrequenciesData frData = getFrequencies(inputSignal);
 		executeSpectrumAnalysis(frData);
+		vector<double> scaledSpectrum = getScaledSpectrumAnalysis();
 
-		char *buffer = (char *)spectrumLog.data();
-		unsigned int bufferBytes = spectrumLog.size() * sizeof(double);
+		char *buffer = (char *)scaledSpectrum.data();
+		unsigned int bufferBytes = scaledSpectrum.size() * sizeof(double);
 
 		return RawData{ buffer, bufferBytes };
 	}
@@ -220,4 +230,39 @@ class Analyser {
 		return magnitudeWithWeight;
 	}
 
+	vector<double> getScaledSpectrumAnalysis() {
+        auto maxIter = max_element(spectrumLog.begin(), spectrumLog.end());
+		*currentPeekIter = *maxIter;
+		currentPeekIter++;
+		if (currentPeekIter == lastPeeks.end()) {
+			currentPeekIter = lastPeeks.begin();
+		}
+
+		double sum = 0;
+		for (double peek : lastPeeks) {
+			sum += peek;
+		}
+		unsigned int avg = round(sum / lastPeeks.size());
+		if (avg > currentPeek) {
+			currentPeek = avg;
+		}
+
+		if (currentPeek > 1 && (clock() - lastChecked) / CLOCKS_PER_SEC >= 1) {
+			// slowly reduce the current peek
+			currentPeek--;
+			lastChecked = clock();
+		}
+		// ***************************************
+
+		const double SCALE_MAX = 100;
+		double scale = SCALE_MAX / currentPeek;
+
+
+		vector<double> scaledSpectrum(spectrumLog.size());
+		int i = 0;
+		for (double spectrumValue : spectrumLog) {
+			scaledSpectrum[i++] = spectrumValue * scale;
+		}
+		return scaledSpectrum;
+	}
 };
