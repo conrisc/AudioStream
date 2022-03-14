@@ -47,7 +47,7 @@ enum SpectrumScale {
 
 class Analyser {
 	bool first = true;
-	unsigned int fftSize = 2048;
+	unsigned int fftSize; // must be the power of 2
 	vector<OctaveBand> octaveBands;
 	vector<double> spectrumLog;
 	Aquila::HannWindow hann;
@@ -62,8 +62,9 @@ class Analyser {
   public:
 	unsigned int sampleRate = 30000;
 
-	Analyser() : hann(fftSize) {
-		calculateOctaveBands();
+	Analyser(unsigned int fftSize) : hann(fftSize) {
+		fftSize = fftSize;
+		calculateOctaveBands(4);
 		spectrumLog.assign(octaveBands.size(), 0);
 		lastPeeks.assign(10, 1);
 		currentPeekIter = lastPeeks.begin();
@@ -127,7 +128,10 @@ class Analyser {
 			OctaveBand currentOctave = octaveBands[spectrumBin];
 			double spectrumBinValue = 0;
 			size_t specLineLow = round(currentOctave.lowFreq / frequencyResolution);
-			size_t specLineHigh = round(currentOctave.highFreq / frequencyResolution); // Not part of current spectrum bin // TODO: cannot exceed spectrum
+			size_t specLineHigh = round(currentOctave.highFreq / frequencyResolution); // Not part of current spectrum bin
+			if (specLineHigh > frData.size()) specLineHigh = frData.size(); // Do not exceed frData size;
+
+			if (first) cout <<"O range"<<currentOctave.lowFreq<< ": " << specLineLow<<" - "<<specLineHigh-1<<": "<<currentOctave.highFreq<<endl;
 
 			for (size_t i = specLineLow; i < specLineHigh; i++) {
 				spectrumBinValue = max(frData[i], spectrumBinValue);
@@ -265,6 +269,7 @@ class Analyser {
 
 		vector<PIXEL> scaledSpectrum(spectrumLog.size());
 		int i = 0;
+		// cout<< (spectrumLog[spectrumLog.size()-1]) * scale<<endl;
 		for (double spectrumValue : spectrumLog) {
 			double scaledValue = spectrumValue * scale;
 			if (scaledValue > SCALE_MAX) {
