@@ -231,26 +231,31 @@ class Analyser {
 	}
 
 	vector<double> getScaledSpectrumAnalysis() {
-        auto maxIter = max_element(spectrumLog.begin(), spectrumLog.end());
-		*currentPeekIter = *maxIter;
-		currentPeekIter++;
-		if (currentPeekIter == lastPeeks.end()) {
-			currentPeekIter = lastPeeks.begin();
-		}
-
-		double sum = 0;
-		for (double peek : lastPeeks) {
-			sum += peek;
-		}
-		unsigned int avg = round(sum / lastPeeks.size());
-		if (avg > currentPeek) {
-			currentPeek = avg;
-		}
-
-		if (currentPeek > 1 && (clock() - lastChecked) / CLOCKS_PER_SEC >= 1) {
-			// slowly reduce the current peek
-			currentPeek--;
+		const double intervalInSeconds = 0.7;
+		if ((clock() - lastChecked) / (double)CLOCKS_PER_SEC >= intervalInSeconds) {
 			lastChecked = clock();
+
+			auto maxIter = max_element(spectrumLog.begin(), spectrumLog.end());
+			*currentPeekIter = *maxIter;
+			currentPeekIter++;
+			if (currentPeekIter == lastPeeks.end()) {
+				currentPeekIter = lastPeeks.begin();
+			}
+
+			double sum = 0;
+			for (double peek : lastPeeks) {
+				sum += peek;
+			}
+
+			unsigned int avg = round(sum / lastPeeks.size());
+			if (avg > currentPeek) {
+				currentPeek = min(avg, (unsigned int)100);
+			}
+
+			if (currentPeek > 1) {
+				// slowly reduce the current peek
+				currentPeek--;
+			}
 		}
 		// ***************************************
 
