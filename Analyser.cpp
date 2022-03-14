@@ -267,16 +267,22 @@ class Analyser {
 
 		double scale = (double)SCALE_MAX / currentPeek;
 
-		vector<PIXEL> scaledSpectrum(spectrumLog.size());
-		int i = 0;
+		const unsigned int visualizationSize = 32; // TODO: Change it, it's TEMPORARY solution
+
+		vector<PIXEL> scaledSpectrum(visualizationSize, 0);
+		unsigned int i = 0;
 		// cout<< (spectrumLog[spectrumLog.size()-1]) * scale<<endl;
-		for (double spectrumValue : spectrumLog) {
-			double scaledValue = spectrumValue * scale;
+		for (auto it = scaledSpectrum.rbegin(); it != scaledSpectrum.rend(); it++) {
+			double scaledValue = 0;
+			if (i < (unsigned int) spectrumLog.size()) {
+				scaledValue = spectrumLog[i++] * scale;
+			}
+
 			if (scaledValue > SCALE_MAX) {
-				scaledSpectrum[i++] = SCALE_MAX;
+				*it = SCALE_MAX;
 			} else {
 			// 	scaledSpectrum[i++] = ; // If PIXEL is double
-				scaledSpectrum[i++] = round(scaledValue); // If PIXEL is integer
+				*it = round(scaledValue); // If PIXEL is integer
 			}
 		}
 		return scaledSpectrum;
