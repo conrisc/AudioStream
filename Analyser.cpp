@@ -15,6 +15,8 @@ using namespace std;
 // typedef signed short MY_TYPE;
 typedef double MY_TYPE;
 typedef vector<double> FrequenciesData;
+typedef unsigned short PIXEL;
+const unsigned int SCALE_MAX = 8;
 
 struct AWeight {
 	double freq;
@@ -71,10 +73,10 @@ class Analyser {
 		fftSize = inputSignal.size();
 		FrequenciesData frData = getFrequencies(inputSignal);
 		executeSpectrumAnalysis(frData);
-		vector<double> scaledSpectrum = getScaledSpectrumAnalysis();
+		vector<PIXEL> scaledSpectrum = getScaledSpectrumAnalysis();
 
 		char *buffer = (char *)scaledSpectrum.data();
-		unsigned int bufferBytes = scaledSpectrum.size() * sizeof(double);
+		unsigned int bufferBytes = scaledSpectrum.size() * sizeof(PIXEL);
 
 		return RawData{ buffer, bufferBytes };
 	}
@@ -230,7 +232,7 @@ class Analyser {
 		return magnitudeWithWeight;
 	}
 
-	vector<double> getScaledSpectrumAnalysis() {
+	vector<PIXEL> getScaledSpectrumAnalysis() {
 		const double intervalInSeconds = 0.7;
 		if ((clock() - lastChecked) / (double)CLOCKS_PER_SEC >= intervalInSeconds) {
 			lastChecked = clock();
@@ -259,14 +261,18 @@ class Analyser {
 		}
 		// ***************************************
 
-		const double SCALE_MAX = 100;
-		double scale = SCALE_MAX / currentPeek;
+		double scale = (double)SCALE_MAX / currentPeek;
 
-
-		vector<double> scaledSpectrum(spectrumLog.size());
+		vector<PIXEL> scaledSpectrum(spectrumLog.size());
 		int i = 0;
 		for (double spectrumValue : spectrumLog) {
-			scaledSpectrum[i++] = spectrumValue * scale;
+			double scaledValue = spectrumValue * scale;
+			if (scaledValue > SCALE_MAX) {
+				scaledSpectrum[i++] = SCALE_MAX;
+			} else {
+			// 	scaledSpectrum[i++] = ; // If PIXEL is double
+				scaledSpectrum[i++] = round(scaledValue); // If PIXEL is integer
+			}
 		}
 		return scaledSpectrum;
 	}
