@@ -57,7 +57,7 @@ struct InputData {
 };
 
 UdpClient client;
-Analyser analyser;
+Analyser analyser(4096);
 
 int counter = 0;
 unsigned int bufferFramesRead = 512;
@@ -91,7 +91,7 @@ int input(
 }
 
 int main(int argc, char *argv[]) {
-	unsigned int channels = 1, fs = 30000, bufferFrames = 2048, device = 0, offset = 0;
+	unsigned int channels = 1, fs = 30000, bufferFrames = 4096, device = 0, offset = 0;
 
 	usage();
 
