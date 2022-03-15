@@ -10,6 +10,7 @@
 #include <math.h>
 #include <vector>
 #include <time.h>
+#include <stdexcept>
 
 using namespace std;
 
@@ -47,8 +48,10 @@ enum SpectrumScale {
 };
 
 class Analyser {
-	bool first = true;
-	unsigned int fftSize; // must be the power of 2
+	bool first = true; 					// control cout for debug
+	unsigned int fftSize; 				// must be the power of 2
+	unsigned int sampleRate;
+	double frequencyResolution;
 	vector<OctaveBand> octaveBands;
 	vector<double> spectrumLog;
 	Aquila::HannWindow waveformWindow;
@@ -62,10 +65,13 @@ class Analyser {
 
 
   public:
-	unsigned int sampleRate = 30000;
 
-	Analyser(unsigned int fftSize) : waveformWindow(fftSize) {
-		fftSize = fftSize;
+	Analyser(unsigned int sampleRateP, unsigned int fftSizeP): waveformWindow(fftSizeP) {
+		fftSize = fftSizeP;
+		sampleRate = sampleRateP;
+		frequencyResolution = (double)sampleRate / fftSize;
+		cout << "Frequency resolution: " << sampleRate << " / " << fftSize << " = " << frequencyResolution << " Hz"<< endl;
+
 		calculateOctaveBands(4);
 		spectrumLog.assign(octaveBands.size(), 0);
 		lastPeeks.assign(30, 1);
@@ -73,7 +79,9 @@ class Analyser {
 	}
 
 	RawData getVisualization(vector<MY_TYPE> inputSignal) {
-		fftSize = inputSignal.size();
+		if (fftSize != inputSignal.size()) {
+			throw invalid_argument("Size inputSignal has to be equal to the predefined fftSize.");
+		}
 		FrequenciesData frData = getFrequencies(inputSignal);
 		executeSpectrumAnalysis(frData);
 		vector<PIXEL> scaledSpectrum = getScaledSpectrumAnalysis();
@@ -81,27 +89,27 @@ class Analyser {
 		char *buffer = (char *)scaledSpectrum.data();
 		unsigned int bufferBytes = scaledSpectrum.size() * sizeof(PIXEL);
 
+		first = false;
 		return RawData{ buffer, bufferBytes };
 	}
 
   private:
 	FrequenciesData getFrequencies(vector<MY_TYPE> inputSignal) {
-		unsigned int size = inputSignal.size();
 		Aquila::SignalSource fftInputWindowed;
 
 		// if (is_same<double, MY_TYPE>::value) {
 		fftInputWindowed = inputSignal * waveformWindow;
 		// } else {
-		// 	vector<double> fftInput(size);
+		// 	vector<double> fftInput(fftSize);
 
-		// 	for (unsigned long i = 0; i < size; i++) {
+		// 	for (unsigned long i = 0; i < fftSize; i++) {
 		// 		fftInput[i] = inputSignal[i];
 		// 	}
 
 		// 	fftInputWindowed = fftInput * waveformWindow;
 		// }
 
-		auto fft = Aquila::FftFactory::getFft(size);
+		auto fft = Aquila::FftFactory::getFft(fftSize);
 		Aquila::SpectrumType spectrum = fft->fft(fftInputWindowed.toArray());
 
 		size_t spectrumSize = spectrum.size() / 2; // Take only the first half, the second is a mirror of first (why?)
@@ -115,17 +123,10 @@ class Analyser {
 			fftOutput[i] = magnitude;
 		}
 
-		FrequenciesData frData = fftOutput;
-		return frData;
+		return fftOutput;
 	}
 
 	void executeSpectrumAnalysis(FrequenciesData frData) {
-		double frequencyResolution = 1.0 * sampleRate / fftSize;
-		if (first)
-			cout << "Frequency resolution: " << sampleRate << " / " << fftSize << " = " << frequencyResolution << endl;
-
-		// *************************************************************
-
 		for (size_t spectrumBin = 0; spectrumBin < spectrumLog.size(); spectrumBin++) {
 			OctaveBand currentOctave = octaveBands[spectrumBin];
 			double spectrumBinValue = 0;
@@ -133,7 +134,7 @@ class Analyser {
 			size_t specLineHigh = round(currentOctave.highFreq / frequencyResolution); // Not part of current spectrum bin
 			if (specLineHigh > frData.size()) specLineHigh = frData.size(); // Do not exceed frData size;
 
-			if (first) cout <<"O range"<<currentOctave.lowFreq<< ": " << specLineLow<<" - "<<specLineHigh-1<<": "<<currentOctave.highFreq<<endl;
+			if (first) cout <<"Octave range: "<<currentOctave.lowFreq<< ": " << specLineLow<<" - "<<specLineHigh-1<<": "<<currentOctave.highFreq << " | ";
 
 			for (size_t i = specLineLow; i < specLineHigh; i++) {
 				spectrumBinValue = max(frData[i], spectrumBinValue);
@@ -146,18 +147,6 @@ class Analyser {
 			const double factorOfPrev = 0.5; // value between [0,1]
 			spectrumLog[spectrumBin] = spectrumLog[spectrumBin] * factorOfPrev + (1 - factorOfPrev) * spectrumBinValue;
 		}
-
-		//***************************************************************
-
-		if (first) {
-			cout << "Spectrum log: " << endl;
-			for (size_t i = 0; i < spectrumLog.size(); i++) {
-				cout << spectrumLog[i] << " ";
-			}
-			cout << endl;
-		}
-		first = false;
-
 	}
 
 	void calculateOctaveBands(short N = 3, unsigned int lowwesMidFreq = 40) { // 1/N Octave bands
@@ -168,7 +157,6 @@ class Analyser {
 		unsigned int higgestMidFreq = 16000;
 		double midFreqInterval = pow(2, 1.0 / N);
 		double edgeRatio = pow(2, 0.5 / N);
-		cout << "Mid frequency interval: " << midFreqInterval << endl;
 
 		double currentFreq = (double)lowwesMidFreq;
 		while (currentFreq <= higgestMidFreq) {
@@ -231,7 +219,7 @@ class Analyser {
 			db =  20 * log10(magnitude);
 		}
 
-		if (first) cout<<freq<< '\t'<<db<<'\t'<<weight<<endl;
+		if (first) cout<<"Freq: "<<freq<< "\tDb: "<<db<<"\tWeight: "<<weight<<endl;
 		const double weightFactor = 0.35;
 		double magnitudeWithWeight = pow(10, (db + weight * weightFactor)/20); // change back from db (power) to magnitude
 
