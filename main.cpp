@@ -40,10 +40,11 @@ typedef double MY_TYPE;
 
 void usage(void) {
 	// argument specifications
-	std::cout << "\nuseage: record N fs bf <device> <channelOffset>\n";
+	std::cout << "\nuseage: N fs abf rbf <device> <channelOffset>\n";
 	std::cout << "    where N = number of channels,\n";
 	std::cout << "    fs = the sample rate (e.g. 44100),\n";
-	std::cout << "    bf = buffer frames (e.g 2048),\n";
+	std::cout << "    abf = buffer frames for analyse (e.g 2048),\n";
+	std::cout << "    rbf = buffer frames for read (e.g 512),\n";
 	std::cout << "    device = optional device to use (default = 0),\n";
 	std::cout << "    channelOffset = an optional channel offset on the device (default = 0).\n\n";
 	// exit(0);
@@ -52,16 +53,16 @@ void usage(void) {
 struct InputData {
 	vector<MY_TYPE> buffer;
 	unsigned int bufferFrames;
+	unsigned int bufferFramesRead;
 	unsigned long bufferBytes;
 	unsigned int channels;
 };
 
+Analyser *analyser;
 UdpClient client("127.0.0.1", 8005);
 UdpClient arduino("192.168.1.20", 2390);
-Analyser analyser(4096);
 
 int counter = 0;
-unsigned int bufferFramesRead = 512;
 
 // Interleaved buffers
 int input(
@@ -76,15 +77,15 @@ int input(
 	MY_TYPE *bufferData = (MY_TYPE *)inputBuffer;
 	// unsigned long length = nBufferFrames * iData->channels;
 
-	std::shift_left(iData -> buffer.begin(), iData -> buffer.end(), bufferFramesRead);
+	std::shift_left(iData -> buffer.begin(), iData -> buffer.end(), iData -> bufferFramesRead);
 
 	// TODO: find better approach
 	size_t j = 0;
-	for (size_t i = iData -> bufferFrames - bufferFramesRead; i < iData -> bufferFrames; i++ ) { // assuming there is only one channel
+	for (size_t i = iData -> bufferFrames - iData -> bufferFramesRead; i < iData -> bufferFrames; i++ ) { // assuming there is only one channel
 		iData -> buffer[i] = bufferData[j++];
 	}
 
-	RawData visualization = analyser.getVisualization(iData -> buffer);
+	RawData visualization = analyser -> getVisualization(iData -> buffer);
 	client.send(visualization.buffer, visualization.bufferBytes);
 	arduino.send(visualization.buffer, visualization.bufferBytes);
 
@@ -93,7 +94,7 @@ int input(
 }
 
 int main(int argc, char *argv[]) {
-	unsigned int channels = 1, fs = 30000, bufferFrames = 4096, device = 0, offset = 0;
+	unsigned int channels = 1, fs = 30000, bufferFrames = 4096, bufferFramesRead = 512, device = 0, offset = 0;
 
 	usage();
 
@@ -110,11 +111,18 @@ int main(int argc, char *argv[]) {
 	if (argc > 3)
 		bufferFrames = (unsigned int)atof(argv[3]);
 	if (argc > 4)
-		device = (unsigned int)atoi(argv[4]);
+		bufferFramesRead = (unsigned int)atof(argv[4]);
 	if (argc > 5)
-		offset = (unsigned int)atoi(argv[5]);
+		device = (unsigned int)atoi(argv[5]);
+	if (argc > 6)
+		offset = (unsigned int)atoi(argv[6]);
 
-	analyser.sampleRate = fs;
+
+	std::cout <<"Sample rate: "<< fs <<" Hz"<<std::endl;
+	std::cout <<"Buffer size for reading: "<< bufferFramesRead <<std::endl;
+	std::cout <<"Callback 'input' will be called every "<< (double)bufferFramesRead/fs * 1000 << " miliseconds"<< std::endl;
+
+	analyser = new Analyser(fs, bufferFrames);
 	// Let RtAudio print messages to stderr.
 	adc.showWarnings(true);
 
@@ -140,6 +148,7 @@ int main(int argc, char *argv[]) {
 
 	data.buffer.assign(bufferFrames, 0); // assuming there is only one channel
 	data.bufferFrames = bufferFrames;
+	data.bufferFramesRead = bufferFramesRead;
 	data.bufferBytes = bufferFrames * channels * sizeof(MY_TYPE);
 	data.channels = channels;
 
