@@ -2,6 +2,7 @@
 #include "aquila/global.h"
 #include "aquila/source/generator/SineGenerator.h"
 #include "aquila/source/window/HannWindow.h"
+// #include "aquila/source/window/RectangularWindow.h"
 #include "aquila/tools/TextPlot.h"
 #include "aquila/transform/FftFactory.h"
 
@@ -15,7 +16,7 @@ using namespace std;
 // typedef signed short MY_TYPE;
 typedef double MY_TYPE;
 typedef vector<double> FrequenciesData;
-typedef unsigned short PIXEL;
+typedef int8_t PIXEL;
 const unsigned int SCALE_MAX = 8;
 
 struct AWeight {
@@ -50,23 +51,24 @@ class Analyser {
 	unsigned int fftSize; // must be the power of 2
 	vector<OctaveBand> octaveBands;
 	vector<double> spectrumLog;
-	Aquila::HannWindow hann;
+	Aquila::HannWindow waveformWindow;
 	SpectrumScale scale = linear;
 
 	vector<double> lastPeeks;
 	vector<double>::iterator currentPeekIter;
 	unsigned int currentPeek = 1;
-	clock_t lastChecked = clock();
+	clock_t lastCheckedInc = clock();
+	clock_t lastCheckedDec = clock();
 
 
   public:
 	unsigned int sampleRate = 30000;
 
-	Analyser(unsigned int fftSize) : hann(fftSize) {
+	Analyser(unsigned int fftSize) : waveformWindow(fftSize) {
 		fftSize = fftSize;
 		calculateOctaveBands(4);
 		spectrumLog.assign(octaveBands.size(), 0);
-		lastPeeks.assign(10, 1);
+		lastPeeks.assign(30, 1);
 		currentPeekIter = lastPeeks.begin();
 	}
 
@@ -88,7 +90,7 @@ class Analyser {
 		Aquila::SignalSource fftInputWindowed;
 
 		// if (is_same<double, MY_TYPE>::value) {
-		fftInputWindowed = inputSignal * hann;
+		fftInputWindowed = inputSignal * waveformWindow;
 		// } else {
 		// 	vector<double> fftInput(size);
 
@@ -96,7 +98,7 @@ class Analyser {
 		// 		fftInput[i] = inputSignal[i];
 		// 	}
 
-		// 	fftInputWindowed = fftInput * hann;
+		// 	fftInputWindowed = fftInput * waveformWindow;
 		// }
 
 		auto fft = Aquila::FftFactory::getFft(size);
@@ -141,7 +143,7 @@ class Analyser {
 			} else {
 				spectrumBinValue = applyWeightDb(currentOctave.midFreq, spectrumBinValue);
 			}
-			const double factorOfPrev = 0.7; // value between [0,1]
+			const double factorOfPrev = 0.5; // value between [0,1]
 			spectrumLog[spectrumBin] = spectrumLog[spectrumBin] * factorOfPrev + (1 - factorOfPrev) * spectrumBinValue;
 		}
 
@@ -230,16 +232,17 @@ class Analyser {
 		}
 
 		if (first) cout<<freq<< '\t'<<db<<'\t'<<weight<<endl;
-		const double weightFactor = 0.25;
+		const double weightFactor = 0.35;
 		double magnitudeWithWeight = pow(10, (db + weight * weightFactor)/20); // change back from db (power) to magnitude
 
 		return magnitudeWithWeight;
 	}
 
 	vector<PIXEL> getScaledSpectrumAnalysis() {
-		const double intervalInSeconds = 0.7;
-		if ((clock() - lastChecked) / (double)CLOCKS_PER_SEC >= intervalInSeconds) {
-			lastChecked = clock();
+		// Update current peek
+		const double intervalInSeconds = 0.05;
+		if ((clock() - lastCheckedInc) / (double)CLOCKS_PER_SEC >= intervalInSeconds) {
+			lastCheckedInc = clock();
 
 			auto maxIter = max_element(spectrumLog.begin(), spectrumLog.end());
 			*currentPeekIter = *maxIter;
@@ -255,14 +258,16 @@ class Analyser {
 
 			unsigned int avg = round(sum / lastPeeks.size());
 			if (avg > currentPeek) {
-				currentPeek = min(avg, (unsigned int)100);
-			}
-
-			if (currentPeek > 1) {
-				// slowly reduce the current peek
-				currentPeek--;
+				currentPeek = min(avg, (unsigned int)120);
 			}
 		}
+
+		// Slowly reduce current peek
+		if (currentPeek > 1 && (clock() - lastCheckedDec) / (double)CLOCKS_PER_SEC >= 0.7) {
+			lastCheckedDec = clock();
+			currentPeek--;
+		}
+
 		// ***************************************
 
 		double scale = (double)SCALE_MAX / currentPeek;
@@ -279,10 +284,10 @@ class Analyser {
 			}
 
 			if (scaledValue > SCALE_MAX) {
-				*it = SCALE_MAX;
+				*it = (PIXEL)SCALE_MAX + 1; // TODO: Change it, Arduino treats 0 as a 'end' string \0
 			} else {
 			// 	scaledSpectrum[i++] = ; // If PIXEL is double
-				*it = round(scaledValue); // If PIXEL is integer
+				*it = (PIXEL)round(scaledValue) + 1; // If PIXEL is integer
 			}
 		}
 		return scaledSpectrum;
