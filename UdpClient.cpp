@@ -10,7 +10,7 @@
 using namespace std;
 
 
-UdpClient::UdpClient() {
+UdpClient::UdpClient(string ip, unsigned int port) {
 	cout << "Constructing UdpClient" << endl;
 
 	// Initialise winsock
@@ -30,8 +30,9 @@ UdpClient::UdpClient() {
 
 	memset((char *)&si_other, 0, sizeof(si_other));
 	si_other.sin_family = AF_INET;
-	si_other.sin_port = htons(PORT);
-	si_other.sin_addr.S_un.S_addr = inet_addr(SERVER);
+	si_other.sin_port = htons(port);
+	char *ipC = &ip[0];
+	si_other.sin_addr.S_un.S_addr = inet_addr(ipC);
 }
 
 UdpClient::~UdpClient() {

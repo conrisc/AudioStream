@@ -56,7 +56,8 @@ struct InputData {
 	unsigned int channels;
 };
 
-UdpClient client;
+UdpClient client("127.0.0.1", 8005);
+UdpClient arduino("192.168.1.20", 2390);
 Analyser analyser(4096);
 
 int counter = 0;
@@ -85,6 +86,7 @@ int input(
 
 	RawData visualization = analyser.getVisualization(iData -> buffer);
 	client.send(visualization.buffer, visualization.bufferBytes);
+	arduino.send(visualization.buffer, visualization.bufferBytes);
 
 	// 	return 2;
 	return 0;
