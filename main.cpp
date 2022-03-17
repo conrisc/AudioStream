@@ -61,8 +61,9 @@ struct InputData {
 
 CommunicationController communicationCtrl;
 Analyser *analyser;
-UdpClient client("127.0.0.1", 8005);
+// UdpClient client("127.0.0.1", 8005); // FOR TESTING
 UdpClient arduino("192.168.1.20", 2390);
+
 
 int counter = 0;
 
@@ -101,6 +102,11 @@ int main(int argc, char *argv[]) {
 	unsigned int channels = 1, fs = 30000, bufferFrames = 4096, bufferFramesRead = 512, device = 0, offset = 0;
 
 	usage();
+
+	// Set led brightness
+	vector<PIXEL> brightnessMsg = communicationCtrl.getBrightnessMsg(1);
+	arduino.send({(char*)brightnessMsg.data(), sizeof(PIXEL) * brightnessMsg.size()});
+	//**
 
 	RtAudio adc;
 	if (adc.getDeviceCount() < 1) {

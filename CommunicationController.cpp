@@ -4,14 +4,21 @@
 typedef uint8_t PIXEL;
 
 enum MessageType : PIXEL {
-  setBrightness = 1,
-  lightMatrixColumns
+	setBrightness = 1,
+	lightMatrixColumns
 };
 
 class CommunicationController {
-
   public:
 	CommunicationController() {}
+
+	/*
+	  brightness - led brightness, value range [0, 255]
+	*/
+	vector<PIXEL> getBrightnessMsg(uint8_t brightness) {
+		vector<PIXEL> msgBuffer { setBrightness, brightness };
+		return msgBuffer;
+	}
 
 	vector<PIXEL> getLightMatrixColumnMsg(vector<double> input, double max) {
 		double scale = (double)ROWS / max;
