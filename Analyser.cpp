@@ -17,8 +17,6 @@ using namespace std;
 // typedef signed short MY_TYPE;
 typedef double MY_TYPE;
 typedef vector<double> FrequenciesData;
-typedef int8_t PIXEL;
-const unsigned int SCALE_MAX = 8;
 
 struct AWeight {
 	double freq;
@@ -31,9 +29,9 @@ vector<AWeight> aWeights = {
     {400, -4.8},  {500, -3.2}, {630, -1.9}, {800, -0.8},   {1000, 0.0},  {1250, 0.6},   {1600, 1.0},   {2000, 1.2},   {2500, 1.3},
     {3150, 1.2},  {4000, 1.0}, {5000, 0.6}, {6300, -0.1},  {8000, -1.1}, {10000, -2.5}, {12500, -4.3}, {16000, -6.7}, {20000, -9.3}};
 
-struct RawData {
-	char *buffer;
-	unsigned long bufferBytes;
+struct VisualizationData {
+	vector<double> spectrum;
+	double max;
 };
 
 struct OctaveBand {
@@ -65,7 +63,6 @@ class Analyser {
 
 
   public:
-
 	Analyser(unsigned int sampleRateP, unsigned int fftSizeP): waveformWindow(fftSizeP) {
 		fftSize = fftSizeP;
 		sampleRate = sampleRateP;
@@ -78,19 +75,16 @@ class Analyser {
 		currentPeekIter = lastPeeks.begin();
 	}
 
-	RawData getVisualization(vector<MY_TYPE> inputSignal) {
+	VisualizationData getVisualization(vector<MY_TYPE> inputSignal) {
 		if (fftSize != inputSignal.size()) {
 			throw invalid_argument("Size inputSignal has to be equal to the predefined fftSize.");
 		}
 		FrequenciesData frData = getFrequencies(inputSignal);
 		executeSpectrumAnalysis(frData);
-		vector<PIXEL> scaledSpectrum = getScaledSpectrumAnalysis();
-
-		char *buffer = (char *)scaledSpectrum.data();
-		unsigned int bufferBytes = scaledSpectrum.size() * sizeof(PIXEL);
+		calculateCurrentPeek();
 
 		first = false;
-		return RawData{ buffer, bufferBytes };
+		return VisualizationData { spectrumLog, (double)currentPeek };
 	}
 
   private:
@@ -226,7 +220,7 @@ class Analyser {
 		return magnitudeWithWeight;
 	}
 
-	vector<PIXEL> getScaledSpectrumAnalysis() {
+	void calculateCurrentPeek() {
 		// Update current peek
 		const double intervalInSeconds = 0.05;
 		if ((clock() - lastCheckedInc) / (double)CLOCKS_PER_SEC >= intervalInSeconds) {
@@ -255,29 +249,5 @@ class Analyser {
 			lastCheckedDec = clock();
 			currentPeek--;
 		}
-
-		// ***************************************
-
-		double scale = (double)SCALE_MAX / currentPeek;
-
-		const unsigned int visualizationSize = 32; // TODO: Change it, it's TEMPORARY solution
-
-		vector<PIXEL> scaledSpectrum(visualizationSize, 0);
-		unsigned int i = 0;
-		// cout<< (spectrumLog[spectrumLog.size()-1]) * scale<<endl;
-		for (auto it = scaledSpectrum.rbegin(); it != scaledSpectrum.rend(); it++) {
-			double scaledValue = 0;
-			if (i < (unsigned int) spectrumLog.size()) {
-				scaledValue = spectrumLog[i++] * scale;
-			}
-
-			if (scaledValue > SCALE_MAX) {
-				*it = (PIXEL)SCALE_MAX + 1; // TODO: Change it, Arduino treats 0 as a 'end' string \0
-			} else {
-			// 	scaledSpectrum[i++] = ; // If PIXEL is double
-				*it = (PIXEL)round(scaledValue) + 1; // If PIXEL is integer
-			}
-		}
-		return scaledSpectrum;
 	}
 };

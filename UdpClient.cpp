@@ -41,9 +41,9 @@ UdpClient::~UdpClient() {
 	WSACleanup();
 }
 
-void UdpClient::send(char *inputBuffer, unsigned int bufferBytes) {
+void UdpClient::send(std::span<const char> data) {
 	// cout << "Sending data of length: "<< bufferBytes << endl;
-    if (sendto(s, inputBuffer, bufferBytes, 0, (struct sockaddr *)&si_other, slen) == SOCKET_ERROR) {
+    if (sendto(s, data.data(), data.size_bytes(), 0, (struct sockaddr *)&si_other, slen) == SOCKET_ERROR) {
         printf("sendto() failed with error code : %d", WSAGetLastError());
         exit(EXIT_FAILURE);
     }

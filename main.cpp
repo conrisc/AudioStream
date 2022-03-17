@@ -7,6 +7,7 @@
 #include <stdio.h>
 
 #include "Analyser.cpp"
+#include "CommunicationController.cpp"
 #include "UdpClient.h"
 
 /*
@@ -58,6 +59,7 @@ struct InputData {
 	unsigned int channels;
 };
 
+CommunicationController communicationCtrl;
 Analyser *analyser;
 UdpClient client("127.0.0.1", 8005);
 UdpClient arduino("192.168.1.20", 2390);
@@ -85,9 +87,11 @@ int input(
 		iData -> buffer[i] = bufferData[j++];
 	}
 
-	RawData visualization = analyser -> getVisualization(iData -> buffer);
-	client.send(visualization.buffer, visualization.bufferBytes);
-	arduino.send(visualization.buffer, visualization.bufferBytes);
+	VisualizationData visualization = analyser -> getVisualization(iData -> buffer);
+	vector<PIXEL> scaledSpectrum = communicationCtrl.getLightMatrixColumnMsg(visualization.spectrum, visualization.max);
+
+	// client.send({(char*)scaledSpectrum.data(), sizeof(decltype(scaledSpectrum)::value_type) * scaledSpectrum.size()});
+	arduino.send({(char*)scaledSpectrum.data(), sizeof(PIXEL) * scaledSpectrum.size()});
 
 	// 	return 2;
 	return 0;

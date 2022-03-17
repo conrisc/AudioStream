@@ -1,3 +1,4 @@
+#include <span>
 #define BUFLEN 512         // Max length of buffer
 
 
@@ -15,5 +16,5 @@ class UdpClient {
 	UdpClient(std::string ip, unsigned int port);
 	~UdpClient();
 
-	void send(char *inputBuffer, unsigned int bufferBytes);
+	void send(std::span<const char> data);
 };
