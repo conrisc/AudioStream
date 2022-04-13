@@ -62,7 +62,8 @@ struct InputData {
 CommunicationController communicationCtrl;
 Analyser *analyser;
 // UdpClient client("127.0.0.1", 8005); // FOR TESTING
-UdpClient arduino("192.168.1.20", 2390);
+// UdpClient arduino("192.168.1.20", 2390);
+UdpClient esp("192.168.1.28", 1234);
 
 
 int counter = 0;
@@ -89,10 +90,11 @@ int input(
 	}
 
 	VisualizationData visualization = analyser -> getVisualization(iData -> buffer);
-	vector<PIXEL> scaledSpectrum = communicationCtrl.getLightMatrixColumnMsg(visualization.spectrum, visualization.max);
+	// vector<PIXEL> scaledSpectrum = communicationCtrl.getLightMatrixColumnMsg(visualization.spectrum, visualization.max);
+	vector<PIXEL> scaledSpectrum = communicationCtrl.getFrequencySpectrumMsg(visualization.spectrum, visualization.max);
 
 	// client.send({(char*)scaledSpectrum.data(), sizeof(decltype(scaledSpectrum)::value_type) * scaledSpectrum.size()});
-	arduino.send({(char*)scaledSpectrum.data(), sizeof(PIXEL) * scaledSpectrum.size()});
+	esp.send({(char*)scaledSpectrum.data(), sizeof(PIXEL) * scaledSpectrum.size()});
 
 	// 	return 2;
 	return 0;
@@ -104,8 +106,16 @@ int main(int argc, char *argv[]) {
 	usage();
 
 	// Set led brightness
-	vector<PIXEL> brightnessMsg = communicationCtrl.getBrightnessMsg(1);
-	arduino.send({(char*)brightnessMsg.data(), sizeof(PIXEL) * brightnessMsg.size()});
+	std::cout<<"Led brightness [0-255]: ";
+	unsigned short brightness;
+	std::cin >> brightness;
+	vector<PIXEL> brightnessMsg = communicationCtrl.getBrightnessMsg(brightness);
+	esp.send({(char*)brightnessMsg.data(), sizeof(PIXEL) * brightnessMsg.size()});
+	// Set led max brightness
+	std::cout<<"Led max brightness [0-255]: ";
+	std::cin >> brightness;
+	brightnessMsg = communicationCtrl.getMaxBrightnessMsg(brightness);
+	esp.send({(char*)brightnessMsg.data(), sizeof(PIXEL) * brightnessMsg.size()});
 	//**
 
 	RtAudio adc;

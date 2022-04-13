@@ -69,7 +69,7 @@ class Analyser {
 		frequencyResolution = (double)sampleRate / fftSize;
 		cout << "Frequency resolution: " << sampleRate << " / " << fftSize << " = " << frequencyResolution << " Hz"<< endl;
 
-		calculateOctaveBands(4);
+		calculateOctaveBands(2);
 		spectrumLog.assign(octaveBands.size(), 0);
 		lastPeeks.assign(30, 1);
 		currentPeekIter = lastPeeks.begin();
